@@ -31,9 +31,21 @@ this document covers the aesthetic and structural conventions of the primatology
 - always provide defaults for optional parameters; prefer `False` as the default for feature flags like `history` and `show_rounds`
 
 ### robustness
-- never let a bad model response crash the experiment; always wrap `json.loads` in a try/except
-- on parse failure, warn and retry up to `max_retries` times before falling back to a safe default
-- print a clear `[WARN]` or `[ERROR]` message with the raw response when something goes wrong
+- never use fallbacks, defaults, or fake data — this is production-quality research; bad data is worse than no data
+- always wrap `json.loads` in a try/except; on failure, log a `[WARN]` with the attempt number and immediately retry
+- `query_until_valid` retries indefinitely until a valid response is received — no `max_retries` cap, no early exit:
+  ```python
+  def query_until_valid(agent: BaseAgent, prompt: str) -> tuple[str, str]:
+      attempt = 0
+      while True:
+          attempt += 1
+          response = agent.query(prompt, json_mode=True)
+          result   = parse_action(response)
+          if result is not None:
+              return result
+          console.print(f"  [yellow][WARN] Agent {agent.id} attempt {attempt} failed. Retrying...[/yellow]")
+  ```
+- the attempt counter in the warning makes persistent model misbehavior easy to spot
 
 ---
 

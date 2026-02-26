@@ -12,7 +12,7 @@ by breaking down the study into three phases, we can abstract processes & sequen
 
 ### part 1 (current)
 
-- [ ] two models playing prisoner's dilemma (+ history, + fixed rounds)
+- [x] two models playing prisoner's dilemma (+ history, + fixed rounds)
 - [ ] two models playing chicken (+ history, + fixed rounds)
 - [ ] two models playing battle of the sexes (+ history, + fixed rounds)
 - [ ] two models playing stag hunt (+ history, + fixed rounds)

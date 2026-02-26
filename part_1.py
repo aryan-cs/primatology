@@ -86,14 +86,15 @@ def prisoners_dilemma(A: BaseAgent,
             console.print(f"  [yellow][WARN] Failed to parse response as JSON ({e}). Retrying...[/yellow]")
             return None
 
-    def query_until_valid(agent: BaseAgent, prompt: str, max_retries: int = 5) -> tuple[str, str]:
-        for _ in range(max_retries):
+    def query_until_valid(agent: BaseAgent, prompt: str) -> tuple[str, str]:
+        attempt = 0
+        while True:
+            attempt += 1
             response = agent.query(prompt, json_mode=True)
             result   = parse_action(response)
             if result is not None:
                 return result
-        console.print(f"  [red][ERROR] Agent {agent.id} failed after {max_retries} retries. Defaulting to defect.[/red]")
-        return 'defect', ''
+            console.print(f"  [yellow][WARN] Agent {agent.id} attempt {attempt} failed. Retrying...[/yellow]")
 
     console.print(Panel(
         f"[bold]Prisoner's Dilemma[/bold]\n"
