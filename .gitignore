@@ -1,0 +1,21 @@
+# python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+
+.vscode/
+
+# uv
+uv.lock
+
+# env
+.env
+
+# results
+results/
+
+# os
+.DS_Store
+
+.hidden-items.json
