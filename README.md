@@ -38,3 +38,13 @@ by breaking down the study into three phases, we can abstract processes & sequen
 6. [LLM Multi-Agent Systems: Challenges and Open Problems](https://arxiv.org/abs/2402.03578v1)
 7. [Generative Agents: Interactive Simulacra of Human Behavior](https://arxiv.org/abs/2304.03442)
 8. [Collaborative Memory: Multi-User Memory Sharing in LLM Agents with Dynamic Access Control](https://arxiv.org/abs/2505.18279v1)
+
+## how to run
+
+this entire project uses `uv`. make sure to use that.
+
+part_1.py:
+
+```bash
+uv run part_1.py
+```

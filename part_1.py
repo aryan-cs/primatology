@@ -48,7 +48,7 @@ def prisoners_dilemma(A: BaseAgent,
     }
     
     total_scores = {A.id: 0, B.id: 0}
-    all_history  = []  # (game_num, round_num, action_A, action_B, payoff_A, payoff_B)
+    all_history  = []
 
     def build_prompt(agent: BaseAgent, opponent: BaseAgent, round_num: int, game_history: list) -> str:
         prompt = (
@@ -147,7 +147,6 @@ def prisoners_dilemma(A: BaseAgent,
                 border_style="white",
             ))
 
-        # Per-game summary table
         console.rule(f"[bold]Game {game_num} Results[/bold]")
         table = Table(box=box.ROUNDED, show_header=True, header_style="bold", expand=True)
         table.add_column("Round",                       justify="center")
@@ -165,7 +164,6 @@ def prisoners_dilemma(A: BaseAgent,
             border_style="white",
         ))
 
-    # Overall summary (only meaningful if games > 1)
     if games > 1:
         console.rule("[bold]Overall Results[/bold]")
 
@@ -219,8 +217,7 @@ def prisoners_dilemma(A: BaseAgent,
         )
         console.print(overall_table)
 
-    # CSV
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%m-%d-%Y_%H:%M:%S")
     csv_dir   = os.path.join("results", "prisoners-dilemma")
     os.makedirs(csv_dir, exist_ok=True)
     csv_path  = os.path.join(csv_dir, f"{timestamp}.csv")
