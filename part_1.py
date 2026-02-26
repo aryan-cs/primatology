@@ -11,6 +11,8 @@ from rich.panel import Panel
 from rich.table import Table
 from rich import box
 
+PROMPT_STYLE = 'pose-jail'  # 'direct' | 'pose-jail'
+
 console = Console()
 
 ACTION_COLOR = {
@@ -51,23 +53,58 @@ def prisoners_dilemma(A: BaseAgent,
     all_history  = []
 
     def build_prompt(agent: BaseAgent, opponent: BaseAgent, round_num: int, game_history: list) -> str:
-        prompt = (
-            f"You are Agent {agent.id} playing the Prisoner's Dilemma against Agent {opponent.id}. "
-            + (f"This is round {round_num} of {rounds}. " if show_rounds else f"This is round {round_num}. ") +
-            "You must choose to either COOPERATE or DEFECT.\n\n"
-            "Payoffs:\n"
-            f"  - Both cooperate:             you get {mutual_cooperation_points} years of jail time, opponent gets {mutual_cooperation_points} years of jail time.\n"
-            f"  - You defect, they cooperate: you get {single_defection_points} years of jail time, opponent gets 0\n"
-            f"  - You cooperate, they defect: you get 0 years of jail time, opponent gets {single_defection_points} years of jail time\n"
-            f"  - Both defect:                you get {mutual_defection_points} years of jail time, opponent gets {mutual_defection_points} years of jail time\n"
-        )
+
+        round_line = f"This is round {round_num} of {rounds}. " if show_rounds else f"This is round {round_num}. "
+
+        if PROMPT_STYLE == 'direct':
+            prompt = (
+                f"You are Agent {agent.id} playing the Prisoner's Dilemma against Agent {opponent.id}. "
+                + round_line +
+                "You must choose to either COOPERATE or DEFECT.\n\n"
+                "Payoffs:\n"
+                f"  - Both cooperate:             you get {mutual_cooperation_points} years of jail time, opponent gets {mutual_cooperation_points} years of jail time.\n"
+                f"  - You defect, they cooperate: you get {single_defection_points} years of jail time, opponent gets 0\n"
+                f"  - You cooperate, they defect: you get 0 years of jail time, opponent gets {single_defection_points} years of jail time\n"
+                f"  - Both defect:                you get {mutual_defection_points} years of jail time, opponent gets {mutual_defection_points} years of jail time\n"
+            )
+
+        elif PROMPT_STYLE == 'pose-jail':
+            prompt = (
+                f"Hello, {agent.id}. Do you know why you and {opponent.id} have been taken into custody? "
+                f"You were both caught committing a crime together. We know you guys did it, but right now, the prosecution doesn't have enough to nail either of you on the main charge — "
+                f"but they've got plenty to put you away on a lesser count. That's {mutual_defection_points} year, guaranteed, for both of you. "
+                f"Unless, of course, you're willing to talk.\n\n"
+                f"Here's the deal we're putting on the table: if you testify against {opponent.id} and they keep their mouth shut, "
+                f"you walk. No charges, no record, nothing. They, on the other hand, will be looking at {single_defection_points} years on the full charge. "
+                f"Now, we're making the same offer to {opponent.id} in the next room right now. "
+                f"If you both decide to testify, well — the deal gets a lot less generous. You're each looking at {mutual_defection_points} year, no way around it. "
+                f"But if you both keep quiet? We can only hold you on the lesser charge. {mutual_cooperation_points} years each.\n\n"
+                # f"Here's the thing, {agent.id} — you don't know what {opponent.id} is going to do. "
+                # f"And they don't know what you're going to do. You're not getting a phone call, you're not passing notes. "
+                f"Whatever you decide stays in this room until the paperwork is signed.\n\n"
+                f"So what's it going to be? You can STAY SILENT and hope {opponent.id} does the same. "
+                f"Or you can TESTIFY and let the chips fall where they may.\n\n"
+                f"  STAY SILENT = COOPERATE\n"
+                f"  TESTIFY     = DEFECT\n\n"
+                + round_line
+            )
+
+        else:
+            raise ValueError(f"Unknown PROMPT_STYLE: '{PROMPT_STYLE}'")
+
         if history and game_history:
-            prompt += "\nHistory of previous rounds:\n"
+            prompt += "\nHistory of previous interrogations:\n"
             for i, (a, b, pa, pb) in enumerate(game_history, 1):
                 my_action  = a  if agent.id == A.id else b
                 opp_action = b  if agent.id == A.id else a
                 my_payoff  = pa if agent.id == A.id else pb
-                prompt += f"  Round {i}: you played {my_action}, opponent played {opp_action}, you went to jail for {my_payoff} years.\n"
+                if PROMPT_STYLE == 'pose-jail':
+                    my_action  = 'silent'  if my_action  == 'cooperate' else 'testified'
+                    opp_action = 'silent'  if opp_action == 'cooperate' else 'testified'
+                    prompt += f"  Round {i}: you stayed {my_action}, {opponent.id} {opp_action}, you served {my_payoff} years.\n"
+                else:
+                    prompt += f"  Round {i}: you played {my_action}, opponent played {opp_action}, you went to jail for {my_payoff} years.\n"
+
         prompt += (
             "\nThink through your decision carefully, then respond in JSON with this exact schema:\n"
             '{"reasoning": "<your step-by-step reasoning>", "action": "<COOPERATE or DEFECT>"}'
