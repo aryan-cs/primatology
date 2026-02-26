@@ -125,12 +125,15 @@ def prisoners_dilemma(A: BaseAgent,
         attempt = 0
         while True:
             attempt += 1
-            response = agent.query(prompt, json_mode=True)
-            result   = parse_action(response)
-            if result is not None:
-                return result
-            console.print(f"  [yellow][WARN] Agent {agent.id} attempt {attempt} failed. Retrying...[/yellow]")
-
+            try:
+                response = agent.query(prompt, json_mode=True)
+                result   = parse_action(response)
+                if result is not None:
+                    return result
+                console.print(f"  [yellow][WARN] Agent {agent.id} attempt {attempt} failed to parse. Retrying...[/yellow]")
+            except Exception as e:
+                console.print(f"  [yellow][WARN] Agent {agent.id} attempt {attempt} raised {type(e).__name__}: {e}. Retrying...[/yellow]")
+            
     console.print(Panel(
         f"[bold]Prisoner's Dilemma[/bold]\n"
         f"[cyan]{A}[/cyan] vs [magenta]{B}[/magenta]\n"
@@ -187,8 +190,8 @@ def prisoners_dilemma(A: BaseAgent,
         table.add_column("Round",                        justify="center")
         table.add_column(f"Agent {A.id}",                justify="center")
         table.add_column(f"Agent {B.id}",                justify="center")
-        table.add_column(f"Agent {A.id} sentence (yrs)", justify="center")
-        table.add_column(f"Agent {B.id} sentence (yrs)", justify="center")
+        table.add_column(f"Agent {A.id} sentence",       justify="center")
+        table.add_column(f"Agent {B.id} sentence",       justify="center")
         for i, (a, b, ya, yb) in enumerate(game_history, 1):
             table.add_row(str(i), colored_action(a), colored_action(b), str(ya), str(yb))
         console.print(table)
@@ -231,8 +234,8 @@ def prisoners_dilemma(A: BaseAgent,
 
         overall_table = Table(box=box.ROUNDED, show_header=True, header_style="bold", expand=True)
         overall_table.add_column("Game",             justify="center")
-        overall_table.add_column(f"Agent {A.id} (yrs)", justify="center")
-        overall_table.add_column(f"Agent {B.id} (yrs)", justify="center")
+        overall_table.add_column(f"Agent {A.id} ({A.provider}/{A.model})", justify="center")
+        overall_table.add_column(f"Agent {B.id} ({B.provider}/{B.model})", justify="center")
 
         for g, (ya, yb) in game_totals.items():
             overall_table.add_row(str(g), str(ya), str(yb))
