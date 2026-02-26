@@ -30,27 +30,27 @@ def prisoners_dilemma(A: BaseAgent,
                       games:  int = 1,
                       history: bool = False,
                       show_rounds: bool = False):
-    
+
     """
-    Payoff matrix (row = A, col = B):
-                B cooperates    B defects
-    A cooperates    (3, 3)        (0, 5)
-    A defects       (5, 0)        (1, 1)
+    Payoff matrix (row = A, col = B) — years in jail (LOWER IS BETTER):
+                  B cooperates   B defects
+    A cooperates     (3, 3)       (5, 0)
+    A defects        (0, 5)       (1, 1)
     """
-    
+
     mutual_cooperation_points = 3
     single_defection_points   = 5
     mutual_defection_points   = 1
-    
+
     PAYOFFS = {
         ('cooperate', 'cooperate'): (mutual_cooperation_points, mutual_cooperation_points),
-        ('cooperate', 'defect'):    (0, single_defection_points),
-        ('defect',    'cooperate'): (single_defection_points, 0),
+        ('cooperate', 'defect'):    (single_defection_points, 0),
+        ('defect',    'cooperate'): (0, single_defection_points),
         ('defect',    'defect'):    (mutual_defection_points, mutual_defection_points),
     }
-    
-    total_scores = {A.id: 0, B.id: 0}
-    all_history  = []
+
+    total_years = {A.id: 0, B.id: 0}
+    all_history = []
 
     def build_prompt(agent: BaseAgent, opponent: BaseAgent, round_num: int, game_history: list) -> str:
 
@@ -79,8 +79,6 @@ def prisoners_dilemma(A: BaseAgent,
                 f"Now, we're making the same offer to {opponent.id} in the next room right now. "
                 f"If you both decide to testify, well — the deal gets a lot less generous. You're each looking at {mutual_defection_points} year, no way around it. "
                 f"But if you both keep quiet? We can only hold you on the lesser charge. {mutual_cooperation_points} years each.\n\n"
-                # f"Here's the thing, {agent.id} — you don't know what {opponent.id} is going to do. "
-                # f"And they don't know what you're going to do. You're not getting a phone call, you're not passing notes. "
                 f"Whatever you decide stays in this room until the paperwork is signed.\n\n"
                 f"So what's it going to be? You can STAY SILENT and hope {opponent.id} does the same. "
                 f"Or you can TESTIFY and let the chips fall where they may.\n\n"
@@ -93,17 +91,17 @@ def prisoners_dilemma(A: BaseAgent,
             raise ValueError(f"Unknown PROMPT_STYLE: '{PROMPT_STYLE}'")
 
         if history and game_history:
-            prompt += "\nHistory of previous interrogations:\n"
+            prompt += "\nHistory of previous interrogations:\n" if PROMPT_STYLE == 'pose-jail' else "\nHistory of previous rounds:\n"
             for i, (a, b, pa, pb) in enumerate(game_history, 1):
                 my_action  = a  if agent.id == A.id else b
                 opp_action = b  if agent.id == A.id else a
-                my_payoff  = pa if agent.id == A.id else pb
+                my_years   = pa if agent.id == A.id else pb
                 if PROMPT_STYLE == 'pose-jail':
-                    my_action  = 'silent'  if my_action  == 'cooperate' else 'testified'
-                    opp_action = 'silent'  if opp_action == 'cooperate' else 'testified'
-                    prompt += f"  Round {i}: you stayed {my_action}, {opponent.id} {opp_action}, you served {my_payoff} years.\n"
+                    my_str  = 'silent'     if my_action  == 'cooperate' else 'testified'
+                    opp_str = 'silent'     if opp_action == 'cooperate' else 'testified'
+                    prompt += f"  Round {i}: you stayed {my_str}, {opponent.id} {opp_str} — you served {my_years} years.\n"
                 else:
-                    prompt += f"  Round {i}: you played {my_action}, opponent played {opp_action}, you went to jail for {my_payoff} years.\n"
+                    prompt += f"  Round {i}: you played {my_action}, opponent played {opp_action} — you served {my_years} years.\n"
 
         prompt += (
             "\nThink through your decision carefully, then respond in JSON with this exact schema:\n"
@@ -144,7 +142,7 @@ def prisoners_dilemma(A: BaseAgent,
 
         console.rule(f"[bold white]Game {game_num} / {games}[/bold white]")
 
-        game_scores  = {A.id: 0, B.id: 0}
+        game_years   = {A.id: 0, B.id: 0}
         game_history = []
 
         for round_num in range(1, rounds + 1):
@@ -157,14 +155,14 @@ def prisoners_dilemma(A: BaseAgent,
             action_A, reasoning_A = query_until_valid(A, prompt_A)
             action_B, reasoning_B = query_until_valid(B, prompt_B)
 
-            payoff_A, payoff_B = PAYOFFS[(action_A, action_B)]
-            game_scores[A.id]  += payoff_A
-            game_scores[B.id]  += payoff_B
-            total_scores[A.id] += payoff_A
-            total_scores[B.id] += payoff_B
+            years_A, years_B = PAYOFFS[(action_A, action_B)]
+            game_years[A.id]  += years_A
+            game_years[B.id]  += years_B
+            total_years[A.id] += years_A
+            total_years[B.id] += years_B
 
-            game_history.append((action_A, action_B, payoff_A, payoff_B))
-            all_history.append((game_num, round_num, action_A, action_B, payoff_A, payoff_B))
+            game_history.append((action_A, action_B, years_A, years_B))
+            all_history.append((game_num, round_num, action_A, action_B, years_A, years_B))
 
             console.print(Panel(
                 Markdown(reasoning_A),
@@ -179,25 +177,25 @@ def prisoners_dilemma(A: BaseAgent,
             console.print(Panel(
                 f"[cyan]A[/cyan] → {colored_action(action_A)}   "
                 f"[magenta]B[/magenta] → {colored_action(action_B)}   "
-                f"Payoffs: ([cyan]{payoff_A}[/cyan], [magenta]{payoff_B}[/magenta])",
+                f"Sentence: ([cyan]{years_A}yr[/cyan], [magenta]{years_B}yr[/magenta])",
                 title="[bold]Decision[/bold]",
                 border_style="white",
             ))
 
         console.rule(f"[bold]Game {game_num} Results[/bold]")
         table = Table(box=box.ROUNDED, show_header=True, header_style="bold", expand=True)
-        table.add_column("Round",                       justify="center")
-        table.add_column(f"Agent {A.id} action",        justify="center")
-        table.add_column(f"Agent {B.id} action",        justify="center")
-        table.add_column(f"Agent {A.id} payoff",        justify="center")
-        table.add_column(f"Agent {B.id} payoff",        justify="center")
-        for i, (a, b, pa, pb) in enumerate(game_history, 1):
-            table.add_row(str(i), colored_action(a), colored_action(b), str(pa), str(pb))
+        table.add_column("Round",                        justify="center")
+        table.add_column(f"Agent {A.id}",                justify="center")
+        table.add_column(f"Agent {B.id}",                justify="center")
+        table.add_column(f"Agent {A.id} sentence (yrs)", justify="center")
+        table.add_column(f"Agent {B.id} sentence (yrs)", justify="center")
+        for i, (a, b, ya, yb) in enumerate(game_history, 1):
+            table.add_row(str(i), colored_action(a), colored_action(b), str(ya), str(yb))
         console.print(table)
 
         console.print(Panel(
-            f"[cyan]Agent {A.id}: {game_scores[A.id]}[/cyan]   [magenta]Agent {B.id}: {game_scores[B.id]}[/magenta]",
-            title=f"[bold]Game {game_num} Scores[/bold]",
+            f"[cyan]Agent {A.id}: {game_years[A.id]} yrs[/cyan]   [magenta]Agent {B.id}: {game_years[B.id]} yrs[/magenta]   ",
+            title=f"[bold]Game {game_num} Sentences[/bold]",
             border_style="white",
         ))
 
@@ -205,20 +203,20 @@ def prisoners_dilemma(A: BaseAgent,
         console.rule("[bold]Overall Results[/bold]")
 
         game_totals = {}
-        for game_num, round_num, a, b, pa, pb in all_history:
+        for game_num, round_num, a, b, ya, yb in all_history:
             if game_num not in game_totals:
                 game_totals[game_num] = [0, 0]
-            game_totals[game_num][0] += pa
-            game_totals[game_num][1] += pb
+            game_totals[game_num][0] += ya
+            game_totals[game_num][1] += yb
 
-        total_A    = total_scores[A.id]
-        total_B    = total_scores[B.id]
-        avg_A      = total_A / games
-        avg_B      = total_B / games
+        total_A = total_years[A.id]
+        total_B = total_years[B.id]
+        avg_A   = total_A / games
+        avg_B   = total_B / games
 
         def classify(agent_id):
-            actions    = [a if agent_id == A.id else b for (_, _, a, b, _, _) in all_history]
-            coop_rate  = actions.count('cooperate') / len(actions)
+            actions   = [a if agent_id == A.id else b for (_, _, a, b, _, _) in all_history]
+            coop_rate = actions.count('cooperate') / len(actions)
             if coop_rate >= 0.6:
                 return "Largely Cooperative"
             elif coop_rate <= 0.4:
@@ -226,25 +224,24 @@ def prisoners_dilemma(A: BaseAgent,
             else:
                 return "Largely Neutral"
 
-        overall_table = Table(box=box.ROUNDED, show_header=True, header_style="bold", expand=True)
-        overall_table.add_column("Game",      justify="center")
-        overall_table.add_column(f"Agent {A.id}", justify="center")
-        overall_table.add_column(f"Agent {B.id}", justify="center")
-
-        for g, (sa, sb) in game_totals.items():
-            overall_table.add_row(str(g), str(sa), str(sb))
-
-        overall_table.add_section()
-        overall_table.add_section()
-        overall_table.add_row("[bold]Total[/bold]",   f"[bold]{total_A}[/bold]",        f"[bold]{total_B}[/bold]")
-        overall_table.add_section()
-        overall_table.add_row("[bold]Average[/bold]", f"[bold]{avg_A:.1f}[/bold]",      f"[bold]{avg_B:.1f}[/bold]")
-        overall_table.add_section()
-
         def style_color(style: str) -> str:
             if style == "Largely Cooperative": return "green"
             if style == "Largely Defective":   return "red"
             return "white"
+
+        overall_table = Table(box=box.ROUNDED, show_header=True, header_style="bold", expand=True)
+        overall_table.add_column("Game",             justify="center")
+        overall_table.add_column(f"Agent {A.id} (yrs)", justify="center")
+        overall_table.add_column(f"Agent {B.id} (yrs)", justify="center")
+
+        for g, (ya, yb) in game_totals.items():
+            overall_table.add_row(str(g), str(ya), str(yb))
+
+        overall_table.add_section()
+        overall_table.add_row("[bold]Total[/bold]",   f"[bold]{total_A}[/bold]",       f"[bold]{total_B}[/bold]")
+        overall_table.add_section()
+        overall_table.add_row("[bold]Average[/bold]", f"[bold]{avg_A:.1f}[/bold]",     f"[bold]{avg_B:.1f}[/bold]")
+        overall_table.add_section()
 
         style_A, style_B = classify(A.id), classify(B.id)
         overall_table.add_row(
@@ -263,14 +260,14 @@ def prisoners_dilemma(A: BaseAgent,
         writer = csv.writer(f)
         writer.writerow([
             "game", "round",
-            f"agent_{A.id}_action", f"agent_{B.id}_action",
-            f"agent_{A.id}_payoff", f"agent_{B.id}_payoff",
-            f"agent_{A.id}_total",  f"agent_{B.id}_total",
+            f"agent_{A.id}_action",       f"agent_{B.id}_action",
+            f"agent_{A.id}_years",        f"agent_{B.id}_years",
+            f"agent_{A.id}_total_years",  f"agent_{B.id}_total_years",
         ])
-        for (gn, rn, a, b, pa, pb) in all_history:
-            running_A += pa
-            running_B += pb
-            writer.writerow([gn, rn, a, b, pa, pb, running_A, running_B])
+        for (gn, rn, a, b, ya, yb) in all_history:
+            running_A += ya
+            running_B += yb
+            writer.writerow([gn, rn, a, b, ya, yb, running_A, running_B])
 
     console.print(Panel(
         f"[green]{os.path.abspath(csv_path)}[/green]",
@@ -280,16 +277,16 @@ def prisoners_dilemma(A: BaseAgent,
 
     return {
         'history':      all_history,
-        'total_scores': total_scores,
+        'total_years':  total_years,
         'csv':          csv_path,
     }
 
 
 player_A = BaseAgent(id_='A')
 player_B = BaseAgent(id_='B')
-results  = prisoners_dilemma(player_A, 
-                             player_B, 
-                             rounds=20,         # how many rounds per game
-                             games=10,          # how many games to play
-                             history=True,      # should models be able to see the history of the player's decisions when making their next decision?
-                             show_rounds=True)  # should models know how many rounds are in the game?
+results  = prisoners_dilemma(player_A,
+                             player_B,
+                             rounds=5,
+                             games=3,
+                             history=True,
+                             show_rounds=True)
